@@ -1,0 +1,47 @@
+package com.example.apprecommendation
+
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import java.text.SimpleDateFormat
+import java.util.*
+
+class MainActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val packageManager = packageManager
+        val installedApps = packageManager.getInstalledPackages(0)
+
+        // Filtra para pegar apenas os aplicativos de usuário, não os do sistema
+        val userApps = installedApps.filter { it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+
+        // Recolhe informações sobre o tamanho e a última vez que o app foi usado
+        val appInfoList = userApps.map { packageInfo ->
+            val appName = packageManager.getApplicationLabel(packageInfo.applicationInfo).toString()
+            val lastUsed = packageInfo.firstInstallTime
+            val size = packageManager.getPackageSizeInfo(packageInfo.packageName)?.longSize ?: 0L
+            AppInfo(appName, lastUsed, size)
+        }
+
+        // Ordena os aplicativos por última vez acessado e tamanho
+        val sortedApps = appInfoList.sortedWith(compareBy({ it.lastUsed }, { -it.size }))
+
+        // Exibe recomendações
+        sortedApps.take(5).forEach { app ->
+            println("App: ${app.name} | Última vez usado: ${formatDate(app.lastUsed)} | Tamanho: ${app.size / (1024 * 1024)} MB")
+        }
+    }
+
+    // Função para formatar a data de último acesso
+    private fun formatDate(timestamp: Long): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return sdf.format(Date(timestamp))
+    }
+
+    data class AppInfo(val name: String, val lastUsed: Long, val size: Long)
+}
